@@ -61,14 +61,14 @@ Resources are distributed across accounts as follows:
   - Service-linked roles for log collection
   - Collection IAM roles specific to each account
   - Local CloudWatch log groups for collection activities
-  - Data collection agents and configurations
+  - Data collection processes and configurations
 
 The delegated administrator account hosts most of the centralized infrastructure, while member accounts contain only the necessary resources for collecting and forwarding logs to the central repository.
 
 ## Security Lake Collection Process
 
 ### How Security Lake Collects Data
-AWS Security Lake uses built-in collection mechanisms  that:
+AWS Security Lake uses built-in collection mechanisms (not explicitly called "agents" in AWS documentation) that:
 - Collect log data from enabled AWS sources within an account
 - Transform collected data into the Open Cybersecurity Schema Framework (OCSF) format
 - Handle the extraction, transformation, and loading (ETL) processes
@@ -77,7 +77,7 @@ AWS Security Lake uses built-in collection mechanisms  that:
 > **Official Documentation**: According to the [AWS Security Lake User Guide](https://docs.aws.amazon.com/security-lake/latest/userguide/data-collection.html): "When you add a source to Security Lake, Security Lake automatically begins collecting logs and events from that source. Security Lake converts the collected data to the OCSF format and stores it in your Amazon S3 bucket."
 
 ### Deployment and Management
-- **Who Deploys**: AWS automatically deploys and manages the Security Lake Agent
+- **Who Deploys**: AWS automatically deploys and manages the Security Lake Collection Process
 - **How It's Deployed**: 
   - Deployed automatically when Security Lake is enabled and sources are configured
   - No manual installation or configuration required by customers
@@ -86,7 +86,7 @@ AWS Security Lake uses built-in collection mechanisms  that:
 
 ### Maintenance and Updates
 - **Fully AWS-Managed**: AWS handles all maintenance, updates, and scaling
-- **No Customer Overhead**: Customers don't need to patch, update, or monitor the agent
+- **No Customer Overhead**: Customers don't need to patch, update, or monitor the collection process
 - **Automatic Scaling**: Scales automatically based on log volume
 - **Resilience**: Built with redundancy to ensure reliable log collection
 
@@ -137,9 +137,9 @@ flowchart TB
     subgraph MemberAccount[Member Account]
         VPC[VPC Flow Logs] -->|Generate logs| VPCRole[Collection IAM Role]
         CT[CloudTrail] -->|Generate logs| CTRole[Collection IAM Role]
-        VPCRole -->|Collect| SLAgent[Security Lake Agent]
-        CTRole -->|Collect| SLAgent
-        SLAgent -->|Transform to OCSF| SLService[Security Lake Service]
+        VPCRole -->|Collect| SLProcess[Collection Process]
+        CTRole -->|Collect| SLProcess
+        SLProcess -->|Transform to OCSF| SLService[Security Lake Service]
     end
     
     subgraph DelegatedAccount[Delegated Administrator Account]
@@ -184,9 +184,9 @@ flowchart TB
         end
         
         subgraph CollectionLayer[Collection Layer]
-            VPCRole -->|Collect| SLAgent[Security Lake Agent]
-            CTRole -->|Collect| SLAgent
-            SLAgent -->|Transform to OCSF| SLService[Security Lake Service]
+            VPCRole -->|Collect| SLProcess[Collection Process]
+            CTRole -->|Collect| SLProcess
+            SLProcess -->|Transform to OCSF| SLService[Security Lake Service]
         end
         
         subgraph StorageLayer[Storage & Management Layer]
