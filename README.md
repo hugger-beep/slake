@@ -95,3 +95,87 @@ There are no technical blockers to disabling Security Lake, but proper planning 
 - **Data Lifecycle Policies**: Implement lifecycle policies for security data to manage storage costs
 - **Documentation**: Maintain documentation of Security Lake configuration for future reference
 - **Testing**: Consider testing the disable/re-enable process in a non-production environment first
+
+## Security Lake Data Flow Scenarios
+
+### Scenario 1: Separate Delegated Administrator and Member Account
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#f9f9f9', 'primaryTextColor': '#000000', 'primaryBorderColor': '#7C0000', 'lineColor': '#004D7F', 'secondaryColor': '#f4f4f4', 'tertiaryColor': '#fff0f0' }}}%%
+flowchart TB
+    subgraph "Member Account" [Member Account]
+        style "Member Account" fill:#E8F4F8,stroke:#0072AA
+        VPC[VPC Flow Logs] -->|Generate logs| VPCRole[Collection IAM Role]
+        CT[CloudTrail] -->|Generate logs| CTRole[Collection IAM Role]
+        VPCRole -->|Collect| SLAgent[Security Lake Agent]
+        CTRole -->|Collect| SLAgent
+        SLAgent -->|Transform to OCSF| SLService[Security Lake Service]
+    end
+    
+    subgraph "Delegated Administrator Account" [Delegated Administrator Account]
+        style "Delegated Administrator Account" fill:#F8F0E8,stroke:#AA7200
+        SLS3[Central S3 Bucket] 
+        SLGlue[Glue Database/Tables]
+        SLLF[Lake Formation]
+        SLSub[Subscriber Access]
+    end
+    
+    SLService -->|Forward normalized data| SLS3
+    SLS3 -->|Catalog| SLGlue
+    SLGlue -->|Manage permissions| SLLF
+    SLLF -->|Grant access| SLSub
+    
+    subgraph "Subscribers" [Subscribers]
+        style "Subscribers" fill:#F0E8F8,stroke:#7200AA
+        SIEM[SIEM Systems]
+        SecTools[Security Tools]
+        Analytics[Analytics Platforms]
+    end
+    
+    SLSub -->|Query data| SIEM
+    SLSub -->|Query data| SecTools
+    SLSub -->|Query data| Analytics
+```
+
+### Scenario 2: Single Account as Both Delegated Administrator and Member
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#f9f9f9', 'primaryTextColor': '#000000', 'primaryBorderColor': '#7C0000', 'lineColor': '#004D7F', 'secondaryColor': '#f4f4f4', 'tertiaryColor': '#fff0f0' }}}%%
+flowchart TB
+    subgraph "Single Account (Delegated Admin + Member)" [Single Account - Delegated Admin + Member]
+        style "Single Account (Delegated Admin + Member)" fill:#EFF8E8,stroke:#72AA00
+        
+        subgraph "Log Sources"
+            VPC[VPC Flow Logs] -->|Generate logs| VPCRole[Collection IAM Role]
+            CT[CloudTrail] -->|Generate logs| CTRole[Collection IAM Role]
+        end
+        
+        subgraph "Collection Layer"
+            VPCRole -->|Collect| SLAgent[Security Lake Agent]
+            CTRole -->|Collect| SLAgent
+            SLAgent -->|Transform to OCSF| SLService[Security Lake Service]
+        end
+        
+        subgraph "Storage & Management Layer"
+            SLService -->|Store normalized data| SLS3[S3 Bucket]
+            SLS3 -->|Catalog| SLGlue[Glue Database/Tables]
+            SLGlue -->|Manage permissions| SLLF[Lake Formation]
+            SLLF -->|Grant access| SLSub[Subscriber Access]
+        end
+    end
+    
+    subgraph "Subscribers" [Subscribers]
+        style "Subscribers" fill:#F0E8F8,stroke:#7200AA
+        SIEM[SIEM Systems]
+        SecTools[Security Tools]
+        Analytics[Analytics Platforms]
+    end
+    
+    SLSub -->|Query data| SIEM
+    SLSub -->|Query data| SecTools
+    SLSub -->|Query data| Analytics
+```
+
+In Scenario 1, the member account collects and transforms data before forwarding it to the delegated administrator account for centralized storage and management. The delegated administrator maintains the central infrastructure and controls subscriber access.
+
+In Scenario 2, all components exist within a single account that serves as both the delegated administrator and member. The data flow is more direct since collection, transformation, storage, and access management all occur within the same account.
