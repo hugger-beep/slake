@@ -101,10 +101,8 @@ There are no technical blockers to disabling Security Lake, but proper planning 
 ### Scenario 1: Separate Delegated Administrator and Member Account
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#f9f9f9', 'primaryTextColor': '#000000', 'primaryBorderColor': '#7C0000', 'lineColor': '#004D7F', 'secondaryColor': '#f4f4f4', 'tertiaryColor': '#fff0f0' }}}%%
 flowchart TB
-    subgraph "Member Account" [Member Account]
-        style "Member Account" fill:#E8F4F8,stroke:#0072AA
+    subgraph MemberAccount[Member Account]
         VPC[VPC Flow Logs] -->|Generate logs| VPCRole[Collection IAM Role]
         CT[CloudTrail] -->|Generate logs| CTRole[Collection IAM Role]
         VPCRole -->|Collect| SLAgent[Security Lake Agent]
@@ -112,8 +110,7 @@ flowchart TB
         SLAgent -->|Transform to OCSF| SLService[Security Lake Service]
     end
     
-    subgraph "Delegated Administrator Account" [Delegated Administrator Account]
-        style "Delegated Administrator Account" fill:#F8F0E8,stroke:#AA7200
+    subgraph DelegatedAccount[Delegated Administrator Account]
         SLS3[Central S3 Bucket] 
         SLGlue[Glue Database/Tables]
         SLLF[Lake Formation]
@@ -125,8 +122,7 @@ flowchart TB
     SLGlue -->|Manage permissions| SLLF
     SLLF -->|Grant access| SLSub
     
-    subgraph "Subscribers" [Subscribers]
-        style "Subscribers" fill:#F0E8F8,stroke:#7200AA
+    subgraph Subscribers[Subscribers]
         SIEM[SIEM Systems]
         SecTools[Security Tools]
         Analytics[Analytics Platforms]
@@ -135,28 +131,33 @@ flowchart TB
     SLSub -->|Query data| SIEM
     SLSub -->|Query data| SecTools
     SLSub -->|Query data| Analytics
+    
+    classDef memberClass fill:#E8F4F8,stroke:#0072AA
+    classDef delegatedClass fill:#F8F0E8,stroke:#AA7200
+    classDef subscriberClass fill:#F0E8F8,stroke:#7200AA
+    
+    class MemberAccount memberClass
+    class DelegatedAccount delegatedClass
+    class Subscribers subscriberClass
 ```
 
 ### Scenario 2: Single Account as Both Delegated Administrator and Member
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#f9f9f9', 'primaryTextColor': '#000000', 'primaryBorderColor': '#7C0000', 'lineColor': '#004D7F', 'secondaryColor': '#f4f4f4', 'tertiaryColor': '#fff0f0' }}}%%
 flowchart TB
-    subgraph "Single Account (Delegated Admin + Member)" [Single Account - Delegated Admin + Member]
-        style "Single Account (Delegated Admin + Member)" fill:#EFF8E8,stroke:#72AA00
-        
-        subgraph "Log Sources"
+    subgraph SingleAccount[Single Account - Delegated Admin + Member]
+        subgraph LogSources[Log Sources]
             VPC[VPC Flow Logs] -->|Generate logs| VPCRole[Collection IAM Role]
             CT[CloudTrail] -->|Generate logs| CTRole[Collection IAM Role]
         end
         
-        subgraph "Collection Layer"
+        subgraph CollectionLayer[Collection Layer]
             VPCRole -->|Collect| SLAgent[Security Lake Agent]
             CTRole -->|Collect| SLAgent
             SLAgent -->|Transform to OCSF| SLService[Security Lake Service]
         end
         
-        subgraph "Storage & Management Layer"
+        subgraph StorageLayer[Storage & Management Layer]
             SLService -->|Store normalized data| SLS3[S3 Bucket]
             SLS3 -->|Catalog| SLGlue[Glue Database/Tables]
             SLGlue -->|Manage permissions| SLLF[Lake Formation]
@@ -164,8 +165,7 @@ flowchart TB
         end
     end
     
-    subgraph "Subscribers" [Subscribers]
-        style "Subscribers" fill:#F0E8F8,stroke:#7200AA
+    subgraph Subscribers[Subscribers]
         SIEM[SIEM Systems]
         SecTools[Security Tools]
         Analytics[Analytics Platforms]
@@ -174,6 +174,18 @@ flowchart TB
     SLSub -->|Query data| SIEM
     SLSub -->|Query data| SecTools
     SLSub -->|Query data| Analytics
+    
+    classDef singleClass fill:#EFF8E8,stroke:#72AA00
+    classDef subscriberClass fill:#F0E8F8,stroke:#7200AA
+    classDef logClass fill:#E8F4F8,stroke:#0072AA
+    classDef collectionClass fill:#F8F0E8,stroke:#AA7200
+    classDef storageClass fill:#F0E8F8,stroke:#7200AA
+    
+    class SingleAccount singleClass
+    class Subscribers subscriberClass
+    class LogSources logClass
+    class CollectionLayer collectionClass
+    class StorageLayer storageClass
 ```
 
 In Scenario 1, the member account collects and transforms data before forwarding it to the delegated administrator account for centralized storage and management. The delegated administrator maintains the central infrastructure and controls subscriber access.
