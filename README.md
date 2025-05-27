@@ -68,7 +68,7 @@ The delegated administrator account hosts most of the centralized infrastructure
 ## Security Lake Collection Process
 
 ### How Security Lake Collects Data
-AWS Security Lake uses built-in collection mechanisms (not explicitly called "agents" in AWS documentation) that:
+AWS Security Lake uses built-in collection mechanisms that:
 - Collect log data from enabled AWS sources within an account
 - Transform collected data into the Open Cybersecurity Schema Framework (OCSF) format
 - Handle the extraction, transformation, and loading (ETL) processes
