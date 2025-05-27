@@ -45,7 +45,25 @@ When Security Lake is enabled in an organization, AWS automatically creates and 
 - **VPC Endpoints** (if configured):
   - Interface endpoints for private connectivity
 
-These resources are created across all enabled AWS regions and in each account where Security Lake collects data, with centralized management through the delegated administrator account.
+### Resource Distribution in AWS Organizations
+
+Resources are distributed across accounts as follows:
+
+- **Delegated Administrator Account**:
+  - Primary S3 buckets for centralized data storage
+  - Glue databases and tables for the entire organization
+  - Lake Formation permissions and settings
+  - Subscriber access management resources
+  - Service-linked roles for administration
+  - CloudWatch log groups for centralized monitoring
+
+- **Member/Participating Accounts**:
+  - Service-linked roles for log collection
+  - Collection IAM roles specific to each account
+  - Local CloudWatch log groups for collection activities
+  - Data collection agents and configurations
+
+The delegated administrator account hosts most of the centralized infrastructure, while member accounts contain only the necessary resources for collecting and forwarding logs to the central repository.
 
 ## Impacts of Disabling AWS Security Lake
 
