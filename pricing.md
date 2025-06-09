@@ -35,9 +35,33 @@ AWS Security Lake is a security data lake service that centralizes security data
 
 #### 3. Data Access and Query
 - **Amazon Athena**: $5.00 per TB of data scanned
-  - Used when querying Security Lake data
+  - Primary method for security engineers and analysts to query Security Lake data
+  - Interactive SQL queries through Athena console or API
+  - Costs apply regardless of who runs the query (internal teams or subscribers)
   - Compression and partitioning can reduce query costs
   - Consider using Athena workgroups with query result reuse
+
+- **Subscriber Query Access**: Varies by method
+  - **Direct Query Access**: Subscribers use Athena and pay their own query costs
+  - **Notification-Based Access**: Subscribers receive S3 notifications and download objects
+    (standard S3 GET request and data transfer costs apply)
+
+- **Third-Party SIEM Integration**: 
+  - Tools like Splunk, QRadar, or Microsoft Sentinel can query Security Lake
+  - Each query incurs standard Athena costs ($5.00 per TB scanned)
+  - API calls to retrieve data may incur additional costs
+
+- **Amazon QuickSight Integration**:
+  - **SPICE Storage Mode** (recommended for cost optimization):
+    * Initial data import incurs one-time Athena scan cost ($5.00 per TB)
+    * Subsequent dashboard views use pre-loaded data with no additional Athena costs
+    * SPICE storage costs apply ($0.25 per GB/month)
+    * Scheduled refreshes (e.g., daily/weekly) incur predictable Athena costs
+  - **Direct Query Mode**:
+    * Each dashboard view triggers an Athena query ($5.00 per TB scanned)
+    * No SPICE storage costs
+    * Provides real-time data but at higher query costs
+  - **Enterprise Edition**: $18-$24 per user/month plus SPICE storage
 
 - **AWS Lake Formation**: No additional cost
   - Used for access control and permissions
