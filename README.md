@@ -625,3 +625,92 @@ graph TD
 * Maintains cost advantage over Lambda+Comprehend approach
 * Advantages: Near real-time processing, moderate cost, scalable
 * Disadvantages: Higher cost than batch, requires Kinesis, more complex setup
+
+# AWS Security Lake Pricing Breakdown
+
+## Overview
+AWS Security Lake is a security data lake service that centralizes security data from various AWS services, third-party sources, and custom sources into a purpose-built data lake stored in your account.
+
+## Cost Components
+
+### Free Resources
+- **Security Lake service activation** - No charge for enabling the service
+- **Security Lake console usage** - No charge for using the management console
+- **AWS native source integration** - No charge for connecting AWS services as log sources
+- **AWS Glue Data Catalog** - Tables created by Security Lake are free
+
+### Resources That Incur Costs
+
+#### 1. Data Ingestion and Storage
+- **S3 Storage**: $0.023 per GB/month (Standard tier, US East-1)
+  - All log data is stored in your S3 buckets
+  - Costs vary by region and storage class
+  - Data lifecycle policies can reduce costs by transitioning to cheaper storage tiers
+
+- **Data Ingestion**: $0.50 per GB
+  - Applies to all data ingested into Security Lake
+  - Includes AWS native sources, custom sources, and third-party sources
+
+#### 2. Data Transformation
+- **AWS Glue ETL**: $0.44 per DPU-hour
+  - Used to normalize data into the OCSF format
+  - Minimum of 10-minute billing
+  - Typically 2 DPUs per job
+
+#### 3. Data Access and Query
+- **Amazon Athena**: $5.00 per TB of data scanned
+  - Used when querying Security Lake data
+  - Compression and partitioning can reduce query costs
+  - Consider using Athena workgroups with query result reuse
+
+- **AWS Lake Formation**: No additional cost
+  - Used for access control and permissions
+
+#### 4. Data Sharing
+- **Cross-account access**: No additional cost for sharing
+- **Cross-region replication**: Standard S3 cross-region replication costs apply
+  - $0.02 per GB for data transfer
+  - Additional S3 storage costs in destination region
+
+#### 5. Third-Party Integrations
+- **AWS PrivateLink**: $0.01 per GB processed if used
+- **API calls**: Standard AWS API pricing applies
+
+## Cost Optimization Strategies
+
+1. **Selective Source Configuration**
+   - Only enable log sources you need for security analysis
+   - Consider sampling high-volume logs
+
+2. **Data Retention Policies**
+   - Set appropriate retention periods for different log types
+   - Use S3 Lifecycle policies to transition older data to cheaper storage tiers
+
+3. **Query Optimization**
+   - Use partitioning to reduce data scanned by Athena
+   - Create and use table statistics
+   - Compress data to reduce storage and query costs
+
+4. **Regional Considerations**
+   - Store data in regions with lower S3 costs when possible
+   - Consider data sovereignty and compliance requirements
+
+## Example Cost Calculation
+
+For an organization ingesting 100GB of security data per day:
+
+- **Monthly Data Ingestion**: 100GB × 30 days × $0.50/GB = $1,500
+- **S3 Storage** (assuming 90-day retention): 100GB × 90 days × $0.023/GB = $207
+- **Athena Queries** (assuming 10TB scanned/month): 10TB × $5.00/TB = $50
+- **Glue ETL** (assuming 24 hours/day of processing with 2 DPUs): 24 hours × 30 days × 2 DPUs × $0.44/DPU-hour = $633.60
+
+**Total Estimated Monthly Cost**: $2,390.60
+
+## Additional Considerations
+
+- Costs scale with data volume and retention periods
+- Multi-account deployments multiply storage costs but centralize analysis
+- Custom sources may require additional Lambda or Kinesis resources (billed separately)
+- Actual costs will vary based on usage patterns and AWS region
+
+*Note: All prices are examples based on US East-1 region. Actual prices may vary by region and are subject to change. Refer to the [AWS Pricing Calculator](https://calculator.aws) for the most current pricing information.*
