@@ -269,3 +269,64 @@ In Scenario 2, all components exist within a single account that serves as both 
 - **Data Normalization**: Standardize security data in OCSF format for consistent analysis
 - **Cost Optimization**: Implement lifecycle policies to manage storage costs
 - **Data Sovereignty**: Control where security data is stored and processed
+
+
+
+# Detailed Architecture: RDS Data Streams to AWS Security Lake
+
+## Component Diagram
+
+```mermaid
+graph TD
+    subgraph "Account 1 (RDS Source)"
+        RDS[RDS Database] -->|1. Enable Activity Streams| KDS1[Kinesis Data Stream]
+        KDS1 -->|2. Consume events| LF1[Lambda Function]
+        LF1 -->|3. Transform to OCSF| KF1[Kinesis Firehose]
+        KF1 -->|4. Batch & deliver| S3B1[S3 Bucket]
+        IAM1[IAM Role] -.->|Permissions| S3B1
+        CWL1[CloudWatch Logs] -.->|Monitor| LF1
+    end
+    
+    subgraph "Security Lake Account"
+        S3B1 -->|5. Cross-account access| SL[Security Lake]
+        SL -->|6. Normalize & store| SLS3[Security Lake S3]
+        SL -->|7. Catalog| SLGC[Glue Catalog]
+        SLGC -->|8. Query| Athena[Amazon Athena]
+        SL -->|9. Notify| SNS[SNS Topic]
+        SNS -->|10. Alert| SUB[Security Lake Subscribers]
+        IAM2[IAM Role] -.->|Permissions| SLS3
+    end
+    
+    subgraph "Security Operations"
+        SUB -->|11. Access data| SIEM[SIEM Solution]
+        SUB -->|11. Access data| SA[Security Analytics]
+        Athena -->|12. Ad-hoc analysis| TH[Threat Hunting]
+        QS[QuickSight] -->|13. Visualize| SLGC
+    end
+```
+
+## Data Flow Sequence
+
+```mermaid
+sequenceDiagram
+    participant RDS as RDS Database
+    participant KDS as Kinesis Data Stream
+    participant Lambda as Lambda Function
+    participant Firehose as Kinesis Firehose
+    participant S3 as S3 Bucket (Acct 1)
+    participant SecLake as Security Lake
+    participant SLS3 as Security Lake S3
+    participant Glue as Glue Catalog
+    participant SIEM as SIEM/Security Tools
+    
+    RDS->>KDS: Stream database activity events
+    KDS->>Lambda: Deliver events in batches
+    Lambda->>Lambda: Transform to OCSF format
+    Lambda->>Firehose: Send transformed events
+    Firehose->>S3: Batch and deliver to S3
+    S3->>SecLake: Custom source ingestion
+    SecLake->>SLS3: Store normalized data
+    SecLake->>Glue: Update catalog with new data
+    SecLake->>SIEM: Notify of new data (via SNS)
+    SIEM->>SLS3: Query/access security data
+```
