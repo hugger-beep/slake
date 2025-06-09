@@ -223,3 +223,49 @@ flowchart TB
 In Scenario 1, the member account collects and transforms data before forwarding it to the delegated administrator account for centralized storage and management. The delegated administrator maintains the central infrastructure and controls subscriber access.
 
 In Scenario 2, all components exist within a single account that serves as both the delegated administrator and member. The data flow is more direct since collection, transformation, storage, and access management all occur within the same account.
+
+
+# AWS Security Lake Use Cases
+
+## Security Monitoring and Threat Detection
+
+- **Centralized Security Monitoring**: Aggregate logs from multiple AWS accounts, regions, and on-premises sources
+- **Threat Detection**: Identify malicious activities, unauthorized access, and potential security breaches
+- **Anomaly Detection**: Establish baselines and detect deviations in user or system behavior
+- **Incident Response**: Accelerate investigation and response to security incidents
+
+## Compliance and Audit
+
+- **Regulatory Compliance**: Meet requirements for PCI DSS, HIPAA, SOC2, and other frameworks
+- **Audit Trail**: Maintain comprehensive logs for security audits and investigations
+- **Data Sovereignty**: Ensure data remains in specific geographic regions to meet compliance requirements
+- **Evidence Collection**: Gather and preserve forensic data for security incidents
+
+## Security Operations
+
+- **SIEM Integration**: Feed data to Security Information and Event Management systems
+- **Security Analytics**: Perform advanced analytics on security data to identify patterns
+- **Cross-Account Visibility**: Monitor security events across multiple AWS accounts
+- **Security Automation**: Trigger automated responses to detected threats
+
+## Data Source Integration
+
+- **AWS Service Logs**: Collect logs from CloudTrail, VPC Flow Logs, Route 53, EKS, and more
+- **Third-Party Sources**: Integrate with security vendors like CrowdStrike, Palo Alto Networks
+- **Custom Log Sources**: Ingest custom application logs and security telemetry
+- **On-Premises Integration**: Collect security data from on-premises infrastructure
+
+## Advanced Use Cases
+
+- **Threat Hunting**: Proactively search for indicators of compromise
+- **User Behavior Analytics**: Monitor and analyze user activities for suspicious patterns
+- **Supply Chain Security**: Monitor third-party access and activities within your environment
+- **Zero Trust Verification**: Support zero trust architecture with comprehensive logging
+- **Cloud Security Posture Management**: Enhance visibility into cloud security posture
+
+## Data Management
+
+- **Long-term Retention**: Store security data for extended periods for compliance and investigation
+- **Data Normalization**: Standardize security data in OCSF format for consistent analysis
+- **Cost Optimization**: Implement lifecycle policies to manage storage costs
+- **Data Sovereignty**: Control where security data is stored and processed
