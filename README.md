@@ -230,30 +230,30 @@ In Scenario 2, all components exist within a single account that serves as both 
 
 ```mermaid
 graph TD
-    subgraph "Account 1 (RDS Source)"
-        RDS[RDS Database] -->|1. Enable Activity Streams| KDS1[Kinesis Data Stream]
-        KDS1 -->|2. Consume events| LF1[Lambda Function]
-        LF1 -->|3. Transform to OCSF| KF1[Kinesis Firehose]
-        KF1 -->|4. Batch & deliver| S3B1[S3 Bucket]
+    subgraph "Account 1 RDS Source"
+        RDS[RDS Database] -->|Enable Activity Streams| KDS1[Kinesis Data Stream]
+        KDS1 -->|Consume events| LF1[Lambda Function]
+        LF1 -->|Transform to OCSF| KF1[Kinesis Firehose]
+        KF1 -->|Batch & deliver| S3B1[S3 Bucket]
         IAM1[IAM Role] -.->|Permissions| S3B1
         CWL1[CloudWatch Logs] -.->|Monitor| LF1
     end
     
     subgraph "Security Lake Account"
-        S3B1 -->|5. Cross-account access| SL[Security Lake]
-        SL -->|6. Normalize & store| SLS3[Security Lake S3]
-        SL -->|7. Catalog| SLGC[Glue Catalog]
-        SLGC -->|8. Query| Athena[Amazon Athena]
-        SL -->|9. Notify| SNS[SNS Topic]
-        SNS -->|10. Alert| SUB[Security Lake Subscribers]
+        S3B1 -->|Cross-account access| SL[Security Lake]
+        SL -->|Normalize & store| SLS3[Security Lake S3]
+        SL -->|Catalog| SLGC[Glue Catalog]
+        SLGC -->|Query| Athena[Amazon Athena]
+        SL -->|Notify| SNS[SNS Topic]
+        SNS -->|Alert| SUB[Security Lake Subscribers]
         IAM2[IAM Role] -.->|Permissions| SLS3
     end
     
     subgraph "Security Operations"
-        SUB -->|11. Access data| SIEM[SIEM Solution]
-        SUB -->|11. Access data| SA[Security Analytics]
-        Athena -->|12. Ad-hoc analysis| TH[Threat Hunting]
-        QS[QuickSight] -->|13. Visualize| SLGC
+        SUB -->|Access data| SIEM[SIEM Solution]
+        SUB -->|Access data| SA[Security Analytics]
+        Athena -->|Ad-hoc analysis| TH[Threat Hunting]
+        QS[QuickSight] -->|Visualize| SLGC
     end
 ```
 
@@ -265,7 +265,7 @@ sequenceDiagram
     participant KDS as Kinesis Data Stream
     participant Lambda as Lambda Function
     participant Firehose as Kinesis Firehose
-    participant S3 as S3 Bucket (Acct 1)
+    participant S3 as S3 Bucket Acct1
     participant SecLake as Security Lake
     participant SLS3 as Security Lake S3
     participant Glue as Glue Catalog
@@ -279,7 +279,7 @@ sequenceDiagram
     S3->>SecLake: Custom source ingestion
     SecLake->>SLS3: Store normalized data
     SecLake->>Glue: Update catalog with new data
-    SecLake->>SIEM: Notify of new data (via SNS)
+    SecLake->>SIEM: Notify of new data via SNS
     SIEM->>SLS3: Query/access security data
 ```
 
