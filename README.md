@@ -428,3 +428,200 @@ def lambda_handler(event, context):
 * Configure alerts for ingestion failures
 * Implement data quality checks
 * Regularly validate OCSF schema compliance
+
+
+# Security Lake PHI/PII Handling Scenarios
+
+## Scenario 1: Redact PHI/PII Before Storage
+
+```mermaid
+graph TD
+    subgraph "Application Source"
+        APP[Application] -->|Generate logs| LOGS[Application Logs with PHI/PII]
+        LOGS -->|Stream| KDS[Kinesis Data Stream]
+        KDS -->|Process| LF1[Lambda Function]
+        LF1 -->|Redact PHI/PII| KF[Kinesis Firehose]
+        KF -->|Store| S3[S3 Bucket]
+    end
+    
+    subgraph "Security Lake Account"
+        S3 -->|Ingest| SL[Security Lake]
+        SL -->|Store redacted data| SLS3[Security Lake S3]
+        SL -->|Catalog| GLUE[AWS Glue Catalog]
+        GLUE -->|Query| ATHENA[Amazon Athena]
+    end
+    
+    subgraph "Security Operations"
+        ATHENA -->|Safe queries| ANALYST[Security Analyst]
+        ATHENA -->|No PHI/PII exposure| DASH[Dashboards]
+    end
+    
+    %% Components for redaction
+    LF1 -.->|Uses| COMP[Amazon Comprehend]
+    COMP -.->|Detect PHI/PII| LF1
+    LF1 -.->|Audit| CW[CloudWatch Logs]
+```
+
+## Scenario 2: Column-Level Access Control
+
+```mermaid
+graph TD
+    subgraph "Application Source"
+        APP[Application] -->|Generate logs| LOGS[Application Logs with PHI/PII]
+        LOGS -->|Stream| KDS[Kinesis Data Stream]
+        KDS -->|Process| LF1[Lambda Function]
+        LF1 -->|Tag PHI/PII columns| KF[Kinesis Firehose]
+        KF -->|Store| S3[S3 Bucket]
+    end
+    
+    subgraph "Security Lake Account"
+        S3 -->|Ingest| SL[Security Lake]
+        SL -->|Store with metadata| SLS3[Security Lake S3]
+        SL -->|Catalog with tags| GLUE[AWS Glue Catalog]
+        GLUE -->|Query with LF permissions| ATHENA[Amazon Athena]
+    end
+    
+    subgraph "Access Control"
+        LF[Lake Formation] -->|Column-level security| GLUE
+        IAM[IAM Roles] -->|Define permissions| LF
+        ATHENA -->|Filtered results| ANALYST[Security Analyst]
+        ATHENA -->|Full access| ADMIN[Security Admin]
+    end
+    
+    %% Data classification
+    LF1 -.->|Uses| MACIE[Amazon Macie]
+    MACIE -.->|Classify sensitive data| LF1
+```
+
+## Scenario 3: Role-Based Access Control
+
+```mermaid
+graph TD
+    subgraph "Application Source"
+        APP[Application] -->|Generate logs| LOGS[Application Logs with PHI/PII]
+        LOGS -->|Stream| KF[Kinesis Firehose]
+        KF -->|Store| S3[S3 Bucket]
+    end
+    
+    subgraph "Security Lake Account"
+        S3 -->|Ingest| SL[Security Lake]
+        SL -->|Store data| SLS3[Security Lake S3]
+        SL -->|Register tables| GLUE[AWS Glue Catalog]
+    end
+    
+    subgraph "Access Control Layer"
+        GLUE -->|Admin access| ADMIN_VIEW[Admin View]
+        GLUE -->|Limited access| ANALYST_VIEW[Analyst View]
+        LF[Lake Formation] -->|Manage permissions| GLUE
+        IAM[IAM Roles] -->|Define roles| LF
+    end
+    
+    subgraph "Query Layer"
+        ADMIN_VIEW -->|Full data access| ADMIN_ATHENA[Admin Athena]
+        ANALYST_VIEW -->|No PHI/PII access| ANALYST_ATHENA[Analyst Athena]
+        ADMIN_ATHENA -->|Complete queries| ADMIN[Security Admin]
+        ANALYST_ATHENA -->|Limited queries| ANALYST[Security Analyst]
+    end
+```
+
+## Implementation Details
+
+### Scenario 1: Redaction Implementation
+
+* Lambda uses Amazon Comprehend to detect PHI/PII entities
+* Replaces sensitive data with tokens like [REDACTED-SSN], [REDACTED-NAME]
+* Maintains log structure and context while removing sensitive values
+* Advantages: Simplest access model, no risk of PHI/PII exposure
+* Disadvantages: Original data is permanently altered
+
+### Scenario 2: Column-Level Access Control
+
+* Data is stored intact with sensitive fields tagged
+* Lake Formation provides column-level security
+* Data catalog tags identify PHI/PII columns
+* Permission sets control which roles can see which columns
+* Advantages: Preserves original data, granular access control
+* Disadvantages: More complex to set up, requires careful permission management
+
+### Scenario 3: Role-Based Access Control
+
+* Creates separate views of the same data for different roles
+* Admin view contains all fields including PHI/PII
+* Analyst view filters out or masks sensitive fields
+* Uses Lake Formation row-level and column-level security
+* Advantages: Most flexible approach, maintains data integrity
+* Disadvantages: Most complex to implement and maintain
+
+## Scenario 4: Batch Redaction with AWS Glue (Cost-Optimized)
+
+```mermaid
+graph TD
+    subgraph "Application Source"
+        APP[Application] -->|Generate logs| LOGS[Application Logs with PHI/PII]
+        LOGS -->|Direct upload| S3RAW[S3 Raw Bucket]
+    end
+    
+    subgraph "Batch Processing"
+        S3RAW -->|Daily/Weekly| GLUE[AWS Glue ETL Job]
+        GLUE -->|Redact PHI/PII| S3CLEAN[S3 Clean Bucket]
+        GLUE -.->|Uses| REGEX[Regex Patterns]
+    end
+    
+    subgraph "Security Lake Account"
+        S3CLEAN -->|Ingest| SL[Security Lake]
+        SL -->|Store redacted data| SLS3[Security Lake S3]
+        SL -->|Catalog| GLUEC[AWS Glue Catalog]
+        GLUEC -->|Query| ATHENA[Amazon Athena]
+    end
+    
+    subgraph "Security Operations"
+        ATHENA -->|Safe queries| ANALYST[Security Analyst]
+        ATHENA -->|No PHI/PII exposure| DASH[Dashboards]
+    end
+```
+
+### Scenario 4: Cost-Optimized Batch Redaction
+
+* Uses scheduled AWS Glue ETL jobs instead of real-time Lambda processing
+* Processes logs in batches (daily/weekly) to reduce compute costs
+* Relies on pattern matching and custom transformations in PySpark
+* Avoids Amazon Comprehend costs by using pre-defined patterns
+* Advantages: Significantly lower cost, simpler implementation
+* Disadvantages: Not real-time, potentially less accurate redaction
+
+## Scenario 5: Near Real-Time Redaction with Glue Streaming
+
+```mermaid
+graph TD
+    subgraph "Application Source"
+        APP[Application] -->|Generate logs| LOGS[Application Logs with PHI/PII]
+        LOGS -->|Stream| KDS[Kinesis Data Stream]
+    end
+    
+    subgraph "Stream Processing"
+        KDS -->|Continuous processing| GLUE[AWS Glue Streaming ETL]
+        GLUE -->|Redact PHI/PII| S3CLEAN[S3 Clean Bucket]
+        GLUE -.->|Uses| REGEX[Regex Patterns]
+    end
+    
+    subgraph "Security Lake Account"
+        S3CLEAN -->|Ingest| SL[Security Lake]
+        SL -->|Store redacted data| SLS3[Security Lake S3]
+        SL -->|Catalog| GLUEC[AWS Glue Catalog]
+        GLUEC -->|Query| ATHENA[Amazon Athena]
+    end
+    
+    subgraph "Security Operations"
+        ATHENA -->|Safe queries| ANALYST[Security Analyst]
+        ATHENA -->|No PHI/PII exposure| DASH[Dashboards]
+    end
+```
+
+### Scenario 5: Near Real-Time Streaming Redaction
+
+* Uses AWS Glue Streaming ETL for continuous processing
+* Processes logs with 2-3 minute latency
+* Uses micro-batching with configurable window size
+* Maintains cost advantage over Lambda+Comprehend approach
+* Advantages: Near real-time processing, moderate cost, scalable
+* Disadvantages: Higher cost than batch, requires Kinesis, more complex setup
