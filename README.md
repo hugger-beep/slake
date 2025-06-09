@@ -224,54 +224,6 @@ In Scenario 1, the member account collects and transforms data before forwarding
 
 In Scenario 2, all components exist within a single account that serves as both the delegated administrator and member. The data flow is more direct since collection, transformation, storage, and access management all occur within the same account.
 
-
-# AWS Security Lake Use Cases
-
-## Security Monitoring and Threat Detection
-
-- **Centralized Security Monitoring**: Aggregate logs from multiple AWS accounts, regions, and on-premises sources
-- **Threat Detection**: Identify malicious activities, unauthorized access, and potential security breaches
-- **Anomaly Detection**: Establish baselines and detect deviations in user or system behavior
-- **Incident Response**: Accelerate investigation and response to security incidents
-
-## Compliance and Audit
-
-- **Regulatory Compliance**: Meet requirements for PCI DSS, HIPAA, SOC2, and other frameworks
-- **Audit Trail**: Maintain comprehensive logs for security audits and investigations
-- **Data Sovereignty**: Ensure data remains in specific geographic regions to meet compliance requirements
-- **Evidence Collection**: Gather and preserve forensic data for security incidents
-
-## Security Operations
-
-- **SIEM Integration**: Feed data to Security Information and Event Management systems
-- **Security Analytics**: Perform advanced analytics on security data to identify patterns
-- **Cross-Account Visibility**: Monitor security events across multiple AWS accounts
-- **Security Automation**: Trigger automated responses to detected threats
-
-## Data Source Integration
-
-- **AWS Service Logs**: Collect logs from CloudTrail, VPC Flow Logs, Route 53, EKS, and more
-- **Third-Party Sources**: Integrate with security vendors like CrowdStrike, Palo Alto Networks
-- **Custom Log Sources**: Ingest custom application logs and security telemetry
-- **On-Premises Integration**: Collect security data from on-premises infrastructure
-
-## Advanced Use Cases
-
-- **Threat Hunting**: Proactively search for indicators of compromise
-- **User Behavior Analytics**: Monitor and analyze user activities for suspicious patterns
-- **Supply Chain Security**: Monitor third-party access and activities within your environment
-- **Zero Trust Verification**: Support zero trust architecture with comprehensive logging
-- **Cloud Security Posture Management**: Enhance visibility into cloud security posture
-
-## Data Management
-
-- **Long-term Retention**: Store security data for extended periods for compliance and investigation
-- **Data Normalization**: Standardize security data in OCSF format for consistent analysis
-- **Cost Optimization**: Implement lifecycle policies to manage storage costs
-- **Data Sovereignty**: Control where security data is stored and processed
-
-
-
 # Detailed Architecture: RDS Data Streams to AWS Security Lake
 
 ## Component Diagram
@@ -330,3 +282,149 @@ sequenceDiagram
     SecLake->>SIEM: Notify of new data (via SNS)
     SIEM->>SLS3: Query/access security data
 ```
+
+## Technical Implementation Details
+
+### RDS Database Activity Streams Configuration
+
+```json
+{
+  "AWS::RDS::DBInstance": {
+    "Properties": {
+      "EnableActivityStream": true,
+      "ActivityStreamKinesisStreamName": "rds-activity-stream",
+      "ActivityStreamMode": "async",
+      "ActivityStreamEngineNativeAuditFieldsIncluded": true
+    }
+  }
+}
+```
+
+### Lambda Function for OCSF Transformation
+
+```python
+import json
+import base64
+import boto3
+from datetime import datetime
+
+def lambda_handler(event, context):
+    firehose = boto3.client('firehose')
+    
+    output_records = []
+    for record in event['Records']:
+        # Decode and parse the RDS activity stream record
+        payload = json.loads(base64.b64decode(record['kinesis']['data']))
+        
+        # Transform to OCSF format
+        ocsf_event = {
+            "metadata": {
+                "version": "1.0.0-rc.2",
+                "class_name": "database_activity",
+                "class_uid": 3002,
+                "timestamp": datetime.utcnow().isoformat() + "Z"
+            },
+            "database": {
+                "name": payload.get('databaseName', ''),
+                "schema": payload.get('schema', ''),
+                "operation": payload.get('command', ''),
+                "user": payload.get('dbUserName', '')
+            },
+            "src": {
+                "ip": payload.get('sourceIpAddress', ''),
+                "port": payload.get('sourcePort', 0)
+            },
+            "dst": {
+                "ip": payload.get('databaseHost', ''),
+                "port": payload.get('databasePort', 0)
+            },
+            "resources": [{
+                "type": "Database",
+                "name": payload.get('databaseName', ''),
+                "uid": payload.get('dbInstanceId', '')
+            }],
+            "cloud": {
+                "provider": "AWS",
+                "account": {
+                    "uid": context.invoked_function_arn.split(":")[4]
+                },
+                "region": context.invoked_function_arn.split(":")[3]
+            }
+        }
+        
+        # Add to output batch
+        output_records.append({
+            'Data': json.dumps(ocsf_event) + '\n'
+        })
+    
+    # Send to Firehose
+    firehose.put_record_batch(
+        DeliveryStreamName='rds-activity-to-s3',
+        Records=output_records
+    )
+    
+    return {
+        'statusCode': 200,
+        'body': f'Processed {len(output_records)} records'
+    }
+```
+
+### Security Lake Custom Source Configuration
+
+```json
+{
+  "source": {
+    "sourceArn": "arn:aws:s3:::account1-rds-activity-logs",
+    "sourceName": "rds-activity-streams",
+    "sourceVersion": "1.0",
+    "dataFormat": "OCSF",
+    "ocsf": {
+      "class": "database_activity",
+      "version": "1.0.0-rc.2"
+    },
+    "s3SourceConfig": {
+      "bucketArn": "arn:aws:s3:::account1-rds-activity-logs",
+      "prefix": "rds-activity/",
+      "roleArn": "arn:aws:iam::security-account-id:role/SecurityLakeRDSIngestionRole"
+    }
+  }
+}
+```
+
+### Cross-Account IAM Policy
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::security-account-id:role/SecurityLakeRDSIngestionRole"
+      },
+      "Action": [
+        "s3:GetObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::account1-rds-activity-logs",
+        "arn:aws:s3:::account1-rds-activity-logs/*"
+      ]
+    }
+  ]
+}
+```
+
+## Monitoring and Operations
+
+**CloudWatch Metrics to Monitor:**
+* Lambda invocation and error rates
+* Kinesis Data Stream throttling events
+* Firehose delivery success rate
+* Security Lake ingestion metrics
+
+**Operational Considerations:**
+* Set appropriate retention periods in Security Lake
+* Configure alerts for ingestion failures
+* Implement data quality checks
+* Regularly validate OCSF schema compliance
