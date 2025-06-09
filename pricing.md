@@ -118,6 +118,22 @@ AWS Security Lake is a security data lake service that centralizes security data
    - Data in Glacier storage classes (including Instant Retrieval) requires restoration before querying with Athena
    - Plan for restoration time and costs when using Glacier storage classes
    - Consider creating periodic summary tables of frequently needed historical data and storing them in Standard storage
+
+**Long-Term Compliance Retention (7+ Years):**
+   - For 7-year compliance retention requirements:
+     * 0-90 days: S3 Standard-IA ($0.0125/GB/month) for frequent access
+     * 91-365 days: S3 Glacier Instant Retrieval ($0.004/GB/month) for occasional access
+     * 366 days-7 years: S3 Glacier Deep Archive ($0.00099/GB/month) for rare access
+   - Create a separate "compliance archive" process:
+     1. Run monthly summary queries on critical compliance data
+     2. Store these summaries in a separate S3 bucket with Standard storage
+     3. Create an Athena table pointing to these summaries
+   - For investigations requiring historical data:
+     1. Use S3 Batch Operations to restore specific date ranges from Glacier
+     2. Plan for 12-48 hour restoration time for Deep Archive
+     3. Budget for restoration costs ($0.02-0.05 per GB depending on speed)
+     4. Query the restored data within the 30-90 day restoration period
+   - Consider AWS Backup for managing long-term retention with automated lifecycle policies
    
    **Example:** For 100GB/day of logs with a flat 1-year retention in S3 Standard ($0.023/GB/month), storage costs would be approximately $839.50/month. With tiered storage (30 days Standard, 90 days IA, 245 days Glacier), costs drop to approximately $383.25/month—a 54% savings.
 
