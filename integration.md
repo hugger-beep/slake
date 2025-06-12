@@ -193,3 +193,51 @@ graph TD
     
     SL -->|Stores| SLDB
 ```
+
+
+```mermaid
+graph TD
+    subgraph "AWS Services"
+        CT[CloudTrail]
+        SH[Security Hub]
+        VPC[VPC Flow Logs]
+        WAF[AWS WAF]
+        R53[Route 53]
+    end
+    
+    subgraph "Storage Services"
+        CWL[CloudWatch Logs]
+        S3[S3 Buckets]
+    end
+    
+    subgraph "Security Lake"
+        SL[Security Lake Service]
+        SLDB[(Security Lake Data Lake)]
+    end
+    
+    %% Direct API Integration
+    CT -->|Direct API Integration| SL
+    SH -->|Direct API Integration| SL
+    
+    %% Indirect Collection via Storage
+    VPC -->|Logs| CWL
+    VPC -->|Logs| S3
+    WAF -->|Logs| S3
+    R53 -->|Logs| CWL
+    
+    CWL -->|Reads via AWS APIs| SL
+    S3 -->|Reads via AWS APIs| SL
+    
+    SL -->|Normalizes & stores| SLDB
+    
+    %% Styling
+    classDef directAPI fill:#f9f,stroke:#333,stroke-width:2px
+    classDef indirectAPI fill:#f96,stroke:#333,stroke-width:2px
+    classDef storage fill:#bfb,stroke:#333,stroke-width:2px
+    classDef securityLake fill:#bbf,stroke:#333,stroke-width:2px
+    
+    class CT,SH directAPI
+    class VPC,WAF,R53 indirectAPI
+    class CWL,S3 storage
+    class SL,SLDB securityLake
+```
