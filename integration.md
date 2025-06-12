@@ -203,16 +203,19 @@ graph TD
         VPC[VPC Flow Logs]
         WAF[AWS WAF]
         R53[Route 53]
+        EKS[Amazon EKS]
     end
     
     subgraph "Storage Services"
         CWL[CloudWatch Logs]
         S3[S3 Buckets]
+        CS[Custom Source S3]
     end
     
     subgraph "Security Lake"
         SL[Security Lake Service]
         SLDB[(Security Lake Data Lake)]
+        Lambda[Lambda Function]
     end
     
     %% Direct API Integration
@@ -224,9 +227,15 @@ graph TD
     VPC -->|Logs| S3
     WAF -->|Logs| S3
     R53 -->|Logs| CWL
+    EKS -->|Logs| CWL
     
     CWL -->|Reads via AWS APIs| SL
     S3 -->|Reads via AWS APIs| SL
+    
+    %% Custom Source Flow
+    CS -->|S3 Event Notification| Lambda
+    Lambda -->|Reads| CS
+    Lambda -->|Normalizes & Writes to /ext/| SLDB
     
     SL -->|Normalizes & stores| SLDB
     
@@ -235,11 +244,13 @@ graph TD
     classDef indirectAPI fill:#f96,stroke:#333,stroke-width:2px
     classDef storage fill:#bfb,stroke:#333,stroke-width:2px
     classDef securityLake fill:#bbf,stroke:#333,stroke-width:2px
+    classDef lambda fill:#ff9,stroke:#333,stroke-width:2px
     
     class CT,SH directAPI
-    class VPC,WAF,R53 indirectAPI
-    class CWL,S3 storage
+    class VPC,WAF,R53,EKS indirectAPI
+    class CWL,S3,CS storage
     class SL,SLDB securityLake
+    class Lambda lambda
 ```
 ``` mermaid 
 graph TD
