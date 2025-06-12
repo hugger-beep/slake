@@ -59,3 +59,31 @@ graph TD
     MA2 -->|Direct API collection| SL
     SL -->|Normalizes & stores| SLDB
 ```
+
+## VPC Flow Logs Integration with Security Lake
+``` mermaid 
+graph TD
+    subgraph "AWS Organization"
+        subgraph "Management/Log Archive Account"
+            S3C[Centralized S3 Bucket]
+        end
+        
+        subgraph "Member Account 1"
+            VPC1[VPC Flow Logs]
+        end
+        
+        subgraph "Member Account 2"
+            VPC2[VPC Flow Logs]
+        end
+        
+        subgraph "Security Lake Account"
+            SL[Security Lake]
+            SLDB[(Security Lake Data Lake)]
+        end
+    end
+    
+    VPC1 -->|Logs| S3C
+    VPC2 -->|Logs| S3C
+    S3C -->|Collects from central location| SL
+    SL -->|Normalizes & stores| SLDB
+```
