@@ -41,3 +41,38 @@ When configuring filtering at the source service level (e.g., CloudTrail event s
 1. **CloudTrail and Security Hub**: Since Security Lake has direct API integration, it will only receive the events/findings that pass through the filters configured in these services.
 
 2. **VPC Flow Logs, WAF, and Route 53**: Since Security Lake reads from the storage destination, it will only see logs that were stored after filtering was applied at the source.
+
+
+### Global Events Handling
+- Security Lake treats Security Hub findings as regional data, even for global services
+- For global services (like IAM, CloudFront, Route 53), Security Hub findings are collected from the region where they are generated
+- To collect global findings, Security Lake must be configured in the regions where Security Hub aggregates these findings
+- In multi-region deployments, Security Lake will collect the same global finding only once from its originating region
+
+### Global Service Resilience
+- By default, CloudTrail logs for global services (like IAM) are only delivered to us-east-1
+- If us-east-1 experiences an outage, IAM events generated in other regions (e.g., ca-central-1) would not be recorded until us-east-1 recovers
+- For resilience, enable multi-region CloudTrail with "Include global service events" in additional regions
+- This configuration creates redundancy, allowing Security Lake to collect global service events from alternative regions during outages
+
+### Centralized vs. Distributed Collection
+- **Centralized CloudTrail**: Security Lake can collect from the centralized CloudTrail configuration
+- **Distributed CloudTrail**: Security Lake connects to each account's CloudTrail service directly
+
+### Direct API vs. Centralized Bucket Approach
+
+ **Direct API Integration** (recommended):
+- 
+  - Optimized for real-time log collection with lower latency
+  - Simplified architecture with fewer components and potential points of failure
+  - Cost-efficient by eliminating S3 GET request costs and reducing Lambda processing
+  - Ensures consistent OCSF schema handling and automatic updates
+  - Managed by AWS with automatic updates when services evolve
+    
+ **Centralized Bucket as Custom Source**:
+  
+  - May be preferred when existing analytics are already configured against the centralized bucket
+  - Useful when organizations need to maintain the exact same data in both original and Security Lake formats
+  - Can support specific data governance requirements that mandate a single copy of CloudTrail logs
+  - Requires additional configuration and permissions management
+  - May incur additional costs for S3 operations and Lambda processing
