@@ -241,4 +241,41 @@ graph TD
     class CWL,S3 storage
     class SL,SLDB securityLake
 ```
-
+``` mermaid 
+graph TD
+    subgraph "AWS Organization"
+        subgraph "Member Accounts"
+            MA1[Account 1 CloudTrail]
+            MA2[Account 2 CloudTrail]
+            MA3[Account 3 CloudTrail]
+        end
+        
+        subgraph "Log Archive Account"
+            CT[Centralized CloudTrail]
+            S3C[Centralized S3 Bucket]
+        end
+        
+        subgraph "Security Lake Account"
+            SL[Security Lake]
+            SLDB[(Security Lake Data Lake)]
+        end
+    end
+    
+    MA1 -->|Logs| CT
+    MA2 -->|Logs| CT
+    MA3 -->|Logs| CT
+    CT -->|Stores| S3C
+    
+    S3C -->|Configure Security Lake to collect from centralized location| SL
+    
+    %% Disable direct collection - shown as crossed out
+    MA1 -.->|Disable direct collection| SL
+    MA2 -.->|Disable direct collection| SL
+    MA3 -.->|Disable direct collection| SL
+    
+    SL -->|Stores| SLDB
+    
+    style CT fill:#f9f,stroke:#333,stroke-width:2px
+    style S3C fill:#bfb,stroke:#333,stroke-width:2px
+    style SL fill:#bbf,stroke:#333,stroke-width:2px
+```
