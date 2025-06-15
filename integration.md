@@ -290,3 +290,58 @@ graph TD
     style S3C fill:#bfb,stroke:#333,stroke-width:2px
     style SL fill:#bbf,stroke:#333,stroke-width:2px
 ```
+
+``` mermaid
+flowchart TD
+    subgraph "Data Sources"
+        OnPrem[On-Premises Data]
+        CSP[Other Cloud Service Providers]
+        Legacy[Legacy Log Files]
+        SecTools[Security Solutions]
+        CustomSrc[Custom Sources]
+        S3OCSF[S3 with OCSF Parquet]
+    end
+
+    subgraph "Ingestion Methods"
+        API[API Gateway]
+        Direct[Direct Integration]
+        S3Import[S3 Import]
+        Kinesis[Kinesis Data Streams]
+        Lambda[Lambda Functions]
+        Glue[AWS Glue ETL]
+    end
+
+    subgraph "Transformation"
+        OCSF[OCSF Conversion]
+        Parquet[Parquet Format]
+    end
+
+    subgraph "Amazon Security Lake"
+        SecLake[Security Lake Storage]
+        Query[Query Engine]
+        Share[Data Sharing]
+    end
+
+    OnPrem -->|VPN/Direct Connect| Lambda
+    OnPrem -->|Agent Based| Direct
+    CSP -->|Cross-Cloud Connector| API
+    CSP -->|Export to S3| S3Import
+    Legacy -->|Batch Processing| Glue
+    SecTools -->|Native Integration| Direct
+    SecTools -->|Custom Connector| Lambda
+    CustomSrc -->|Custom API| API
+    CustomSrc -->|Custom ETL| Glue
+    S3OCSF -->|Direct Import| S3Import
+
+    API --> OCSF
+    Direct --> OCSF
+    S3Import --> OCSF
+    Kinesis --> OCSF
+    Lambda --> OCSF
+    Glue --> OCSF
+
+    OCSF --> Parquet
+    Parquet --> SecLake
+    SecLake --> Query
+    SecLake --> Share
+```
