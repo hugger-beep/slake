@@ -316,7 +316,7 @@ flowchart TD
     end
 
     %% Customer-Managed ETL with OCSF Transformation
-    subgraph "Customer-Managed ETL & Transformation" 
+    subgraph CustomerETL[" "]
         direction TB
         CustomGlue[Custom AWS Glue Jobs]
         CustomLambda[Custom Lambda Functions]
@@ -324,6 +324,7 @@ flowchart TD
         ThirdParty[Third-Party ETL Tools]
         OCSFConversion[OCSF Conversion]
         ParquetConversion[Parquet Conversion]
+        CustomerETLLabel[Customer-Managed ETL & Transformation]
     end
 
     %% Security Lake Components
@@ -332,6 +333,7 @@ flowchart TD
         NativeETL[Native ETL\nOCSF Conversion]
         CustomSourceAPI[Custom Source API]
         S3Integration[S3 Integration\nNo Transformation]
+        DirectUpload[Direct Upload\n⚠️ Not Recommended]
         SecLakeStorage[Security Lake Storage]
         QueryEngine[Query Engine]
         Subscribers[Subscribers]
@@ -370,15 +372,27 @@ flowchart TD
     ThirdParty --> OCSFConversion
     OCSFConversion --> ParquetConversion
     
-    %% ETL to Security Lake connections
+    %% ETL to Security Lake connections - Multiple paths
     ParquetConversion --> CustomSourceAPI
+    ParquetConversion -.->|Bypass API\n⚠️ Not Recommended| DirectUpload
     
     %% Security Lake internal connections
     NativeETL --> SecLakeStorage
     CustomSourceAPI --> SecLakeStorage
     S3Integration --> SecLakeStorage
+    DirectUpload -.->|Missing Metadata\nNot Queryable| SecLakeStorage
     SecLakeStorage --> QueryEngine
     SecLakeStorage --> Subscribers
+
+    %% Legend
+    subgraph "Legend"
+        direction LR
+        DS[Data Sources]:::sources
+        IP[Ingestion Paths]:::ingestion
+        CMET[Customer-Managed ETL]:::customerETL
+        SL[Security Lake Native]:::securityLake
+        NR[Not Recommended]:::notRecommended
+    end
 
     %% Styling
     classDef sources fill:#f9f,stroke:#333,stroke-width:2px
@@ -386,10 +400,15 @@ flowchart TD
     classDef customerETL fill:#ffaaaa,stroke:#333,stroke-width:2px
     classDef securityLake fill:#aaffaa,stroke:#333,stroke-width:2px
     classDef transformation fill:#ffcc88,stroke:#333,stroke-width:1px
+    classDef labelNode fill:none,stroke:none
+    classDef notRecommended fill:#ffcc88,stroke:#f00,stroke-width:2px,stroke-dasharray: 5 5
     
     class OnPrem,CSP,Legacy,PaloAlto,CrowdStrike,CustomSrc,S3OCSF sources
     class VPN,Agents,CloudConn,S3Export,APIGw,DirectInt ingestion
     class CustomGlue,CustomLambda,EMR,ThirdParty,OCSFConversion,ParquetConversion customerETL
     class NativeETL,CustomSourceAPI,S3Integration,SecLakeStorage,QueryEngine,Subscribers securityLake
+    class CustomerETLLabel labelNode
+    class DirectUpload,NR notRecommended
+
 
 ```
