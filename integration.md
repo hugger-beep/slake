@@ -293,7 +293,7 @@ graph TD
 
 ``` mermaid
 flowchart TD
-    %% Data Sources with specific paths
+    %% Data Sources
     subgraph "Data Sources"
         OnPrem[On-Premises Data]
         CSP[Other Cloud Providers\nAzure/GCP]
@@ -315,13 +315,15 @@ flowchart TD
         DirectInt[Direct Integration]
     end
 
-    %% ETL Not Managed by Security Lake
-    subgraph "Customer-Managed ETL"
+    %% Customer-Managed ETL with OCSF Transformation
+    subgraph "Customer-Managed ETL & Transformation" 
         direction TB
         CustomGlue[Custom AWS Glue Jobs]
         CustomLambda[Custom Lambda Functions]
         EMR[Amazon EMR]
         ThirdParty[Third-Party ETL Tools]
+        OCSFConversion[OCSF Conversion]
+        ParquetConversion[Parquet Conversion]
     end
 
     %% Security Lake Components
@@ -329,7 +331,7 @@ flowchart TD
         direction TB
         NativeETL[Native ETL\nOCSF Conversion]
         CustomSourceAPI[Custom Source API]
-        S3Integration[S3 Integration]
+        S3Integration[S3 Integration\nNo Transformation]
         SecLakeStorage[Security Lake Storage]
         QueryEngine[Query Engine]
         Subscribers[Subscribers]
@@ -361,11 +363,15 @@ flowchart TD
     APIGw --> CustomSourceAPI
     DirectInt --> NativeETL
 
+    %% Customer ETL internal transformations
+    CustomGlue --> OCSFConversion
+    CustomLambda --> OCSFConversion
+    EMR --> OCSFConversion
+    ThirdParty --> OCSFConversion
+    OCSFConversion --> ParquetConversion
+    
     %% ETL to Security Lake connections
-    CustomGlue --> CustomSourceAPI
-    CustomLambda --> CustomSourceAPI
-    EMR --> CustomSourceAPI
-    ThirdParty --> CustomSourceAPI
+    ParquetConversion --> CustomSourceAPI
     
     %% Security Lake internal connections
     NativeETL --> SecLakeStorage
@@ -377,12 +383,13 @@ flowchart TD
     %% Styling
     classDef sources fill:#f9f,stroke:#333,stroke-width:2px
     classDef ingestion fill:#bbf,stroke:#333,stroke-width:1px
-    classDef customerETL fill:#fbb,stroke:#333,stroke-width:1px
-    classDef securityLake fill:#bfb,stroke:#333,stroke-width:1px
+    classDef customerETL fill:#ffaaaa,stroke:#333,stroke-width:2px
+    classDef securityLake fill:#aaffaa,stroke:#333,stroke-width:2px
+    classDef transformation fill:#ffcc88,stroke:#333,stroke-width:1px
     
     class OnPrem,CSP,Legacy,PaloAlto,CrowdStrike,CustomSrc,S3OCSF sources
     class VPN,Agents,CloudConn,S3Export,APIGw,DirectInt ingestion
-    class CustomGlue,CustomLambda,EMR,ThirdParty customerETL
+    class CustomGlue,CustomLambda,EMR,ThirdParty,OCSFConversion,ParquetConversion customerETL
     class NativeETL,CustomSourceAPI,S3Integration,SecLakeStorage,QueryEngine,Subscribers securityLake
 
 ```
