@@ -293,55 +293,96 @@ graph TD
 
 ``` mermaid
 flowchart TD
+    %% Data Sources with specific paths
     subgraph "Data Sources"
         OnPrem[On-Premises Data]
-        CSP[Other Cloud Service Providers]
+        CSP[Other Cloud Providers\nAzure/GCP]
         Legacy[Legacy Log Files]
-        SecTools[Security Solutions]
+        PaloAlto[Palo Alto Networks]
+        CrowdStrike[CrowdStrike]
         CustomSrc[Custom Sources]
         S3OCSF[S3 with OCSF Parquet]
     end
 
-    subgraph "Ingestion Methods"
-        API[API Gateway]
-        Direct[Direct Integration]
-        S3Import[S3 Import]
-        Kinesis[Kinesis Data Streams]
-        Lambda[Lambda Functions]
-        Glue[AWS Glue ETL]
+    %% Ingestion Paths
+    subgraph "Ingestion Paths"
+        direction TB
+        VPN[VPN/Direct Connect]
+        Agents[Security Agents]
+        CloudConn[Cloud Connectors]
+        S3Export[S3 Export/Import]
+        APIGw[API Gateway]
+        DirectInt[Direct Integration]
     end
 
-    subgraph "Transformation"
-        OCSF[OCSF Conversion]
-        Parquet[Parquet Format]
+    %% ETL Not Managed by Security Lake
+    subgraph "Customer-Managed ETL"
+        direction TB
+        CustomGlue[Custom AWS Glue Jobs]
+        CustomLambda[Custom Lambda Functions]
+        EMR[Amazon EMR]
+        ThirdParty[Third-Party ETL Tools]
     end
 
+    %% Security Lake Components
     subgraph "Amazon Security Lake"
-        SecLake[Security Lake Storage]
-        Query[Query Engine]
-        Share[Data Sharing]
+        direction TB
+        NativeETL[Native ETL\nOCSF Conversion]
+        CustomSourceAPI[Custom Source API]
+        S3Integration[S3 Integration]
+        SecLakeStorage[Security Lake Storage]
+        QueryEngine[Query Engine]
+        Subscribers[Subscribers]
     end
 
-    OnPrem -->|VPN/Direct Connect| Lambda
-    OnPrem -->|Agent Based| Direct
-    CSP -->|Cross-Cloud Connector| API
-    CSP -->|Export to S3| S3Import
-    Legacy -->|Batch Processing| Glue
-    SecTools -->|Native Integration| Direct
-    SecTools -->|Custom Connector| Lambda
-    CustomSrc -->|Custom API| API
-    CustomSrc -->|Custom ETL| Glue
-    S3OCSF -->|Direct Import| S3Import
+    %% Data Source to Ingestion Path connections
+    OnPrem --> VPN
+    OnPrem --> Agents
+    CSP --> CloudConn
+    CSP --> S3Export
+    Legacy --> S3Export
+    PaloAlto --> DirectInt
+    PaloAlto --> APIGw
+    CrowdStrike --> DirectInt
+    CrowdStrike --> APIGw
+    CustomSrc --> APIGw
+    S3OCSF --> S3Export
 
-    API --> OCSF
-    Direct --> OCSF
-    S3Import --> OCSF
-    Kinesis --> OCSF
-    Lambda --> OCSF
-    Glue --> OCSF
+    %% Ingestion to ETL connections
+    VPN --> CustomGlue
+    VPN --> CustomLambda
+    Agents --> CustomLambda
+    CloudConn --> CustomGlue
+    CloudConn --> ThirdParty
+    S3Export --> CustomGlue
+    S3Export --> EMR
+    S3Export --> S3Integration
+    APIGw --> CustomLambda
+    APIGw --> CustomSourceAPI
+    DirectInt --> NativeETL
 
-    OCSF --> Parquet
-    Parquet --> SecLake
-    SecLake --> Query
-    SecLake --> Share
+    %% ETL to Security Lake connections
+    CustomGlue --> CustomSourceAPI
+    CustomLambda --> CustomSourceAPI
+    EMR --> CustomSourceAPI
+    ThirdParty --> CustomSourceAPI
+    
+    %% Security Lake internal connections
+    NativeETL --> SecLakeStorage
+    CustomSourceAPI --> SecLakeStorage
+    S3Integration --> SecLakeStorage
+    SecLakeStorage --> QueryEngine
+    SecLakeStorage --> Subscribers
+
+    %% Styling
+    classDef sources fill:#f9f,stroke:#333,stroke-width:2px
+    classDef ingestion fill:#bbf,stroke:#333,stroke-width:1px
+    classDef customerETL fill:#fbb,stroke:#333,stroke-width:1px
+    classDef securityLake fill:#bfb,stroke:#333,stroke-width:1px
+    
+    class OnPrem,CSP,Legacy,PaloAlto,CrowdStrike,CustomSrc,S3OCSF sources
+    class VPN,Agents,CloudConn,S3Export,APIGw,DirectInt ingestion
+    class CustomGlue,CustomLambda,EMR,ThirdParty customerETL
+    class NativeETL,CustomSourceAPI,S3Integration,SecLakeStorage,QueryEngine,Subscribers securityLake
+
 ```
