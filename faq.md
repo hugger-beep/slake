@@ -76,3 +76,105 @@ When configuring filtering at the source service level (e.g., CloudTrail event s
   - Can support specific data governance requirements that mandate a single copy of CloudTrail logs
   - Requires additional configuration and permissions management
   - May incur additional costs for S3 operations and Lambda processing
+
+
+## How Security Lake Discovers New Data
+
+Security Lake doesn't use a traditional Glue crawler to discover new data. Instead, it uses a combination of techniques to keep track of new files:
+
+1. **Partition Projection**: Security Lake uses partition projection in the Glue Data Catalog to automatically recognize the partitioning structure (`region=<region>/accountid=<account-id>/dt=<YYYY-MM-DD>/hr=<HH>/`). This means it doesn't need to crawl the data to discover new partitions - it can infer them based on the partition structure.
+
+2. **S3 Event Notifications**: Security Lake sets up S3 event notifications to be alerted when new data is written to the bucket. When your Glue job writes new Parquet files to the target location, S3 events trigger Security Lake to update its metadata.
+
+3. **Manifest Files**: In some cases, Security Lake uses manifest files to track which data has been processed. These are small metadata files that list the data files that have been added.
+
+4. **Periodic Scans**: Security Lake also performs periodic scans of the S3 bucket to discover any new data that might have been missed by the event notifications.
+
+### Using Existing Centralized CloudTrail Logs
+
+In a Control Tower organization where CloudTrail logs are already centralized in the logging account's S3 bucket, you can leverage these existing logs for Security Lake without enabling CloudTrail collection directly in Security Lake:
+
+1. **Create a Glue ETL job** that:
+   - Reads CloudTrail logs from your existing centralized S3 bucket
+   - Transforms them to OCSF format
+   - Writes them to a target location with the Security Lake partitioning structure
+
+2. **Configure the job parameters**:
+   - `source_bucket`: Your existing CloudTrail logs bucket in the logging account
+   - `source_prefix`: The prefix where organization CloudTrail logs are stored
+   - `target_bucket`: A bucket where you want to store the OCSF-formatted data
+   - `target_prefix`: "ext/ct1" or another prefix of your choice
+
+3. **Schedule the Glue job** to run regularly (e.g., hourly) to process new CloudTrail logs as they arrive
+
+4. **Add a custom source in Security Lake**:
+   - Go to the Security Lake console
+   - Navigate to "Custom sources"
+   - Click "Add custom source"
+   - Enter a name (e.g., "Organization CloudTrail")
+   - For source location, select the target S3 bucket and prefix where your Glue job writes the OCSF data
+   - Select "API Activity" as the OCSF class
+   - Select "Parquet" as the format
+
+5. **Grant necessary permissions**:
+   - Ensure the Glue job has read access to the source CloudTrail bucket
+   - Ensure the Glue job has write access to the target bucket
+   - Ensure Security Lake has read access to the target bucket
+
+This approach:
+- Leverages your existing CloudTrail setup without duplicating data collection
+- Converts the logs to OCSF format for better integration with Security Lake
+- Preserves the multi-account context in the OCSF data
+- Avoids the need to enable CloudTrail collection directly in Security Lake
+
+
+## What Happens When You Add a Custom Source to Security Lake
+
+When you add a custom source via the Security Lake console and point it to your S3 bucket with OCSF files, Security Lake will:
+
+1. **Register the data location**: Security Lake will record the S3 bucket and prefix (`ext/ct1`) as a valid data source.
+
+2. **Create metadata tables**: Security Lake will create metadata tables in AWS Glue Data Catalog that map to your OCSF data, making it queryable.
+
+3. **Set up partitioning**: Security Lake will recognize the partitioning structure in your data and set up partition projections for efficient querying.
+
+4. **Enable querying**: The data will become available for querying through:
+   - Amazon Athena
+   - Security Lake's query interface
+   - Any subscribers you've configured
+
+5. **Apply data lifecycle policies**: Security Lake will apply any configured retention policies to your data.
+
+6. **Monitor for new data**: Security Lake will periodically check for new data in your S3 location and automatically update its metadata tables.
+
+7. **Make data available to subscribers**: If you've configured subscribers, they'll be able to access this data through Security Lake's subscription mechanisms.
+
+## Requirements for Custom Source Data
+
+For this to work properly:
+
+### 1. Ensure proper partitioning
+
+Your data should be written with the partition structure:
+```
+s3://your-bucket/ext/ct1/region=<region>/accountid=<account-id>/dt=<YYYY-MM-DD>/hr=<HH>/
+```
+
+### 2. Maintain OCSF schema
+
+Your data must follow the OCSF schema you specified (API Activity class 3002).
+
+### 3. Use Parquet format
+
+Files must be in Parquet format for optimal performance.
+
+### 4. Include required fields
+
+All required OCSF fields must be present in your data, including:
+- `class_uid`: 3002 for API Activity
+- `category_uid`: 3 for Activity events
+- `activity_id`: 1
+- `type_uid`: 1 for general API activity
+- Time fields and partition fields
+  
+https://github.com/ocsf/examples/tree/main/mappings/markdown/AWS/v1.1.0/CloudTrail
